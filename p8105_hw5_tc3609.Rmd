@@ -1,0 +1,54 @@
+
+---
+title: "p8105_hw5_tc3609"
+author: "Joanna Chuang"
+date: "2026-11-12"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+# Problem 1
+
+```{r problem1}
+birthday_sim = function(n) {
+  birthdays = sample(1:365, size = n, replace = TRUE)
+  any(duplicated(birthdays))
+}
+
+set.seed(123)
+
+birthday_results = tibble(
+  group_size = 2:50
+) |>
+  mutate(
+    probability = map_dbl(
+      group_size,
+      ~ mean(replicate(10000, birthday_sim(.x)))
+    )
+  )
+
+birthday_results
+
+birthday_results |>
+  ggplot(aes(x = group_size, y = probability)) +
+  geom_line(color = "steelblue", linewidth = 1) +
+  geom_point(color = "steelblue", size = 1.5) +
+  labs(
+    title = "Probability of Sharing a Birthday",
+    x = "Group Size",
+    y = "Probability of a Shared Birthday"
+  ) +
+  theme_minimal()
+```
+
+The probability of sharing a birthday increases as the group size increases. With around 23 people, the probability is already approximately 50%. As the group reaches to 50 people, the probability is close to 97%. This shows that shared birthdays become much more likely as the number of people in the group increases.
+
