@@ -111,3 +111,121 @@ longitudinal_data |>
 ```
 
 The experimental group shows an overall increase in observations over the eight weeks, while the control group remains relatively stable with some individual variation. By week 8, participants in the experimental group generally have higher observations than participants in the control group. This suggests that the two groups follow different trends over time.
+
+# Problem 3
+
+```{r problem3_function}
+library(broom)
+
+sim_t_test = function(mu) {
+
+  sample_data = rnorm(
+    n = 30,
+    mean = mu,
+    sd = 5
+  )
+
+  test_result = t.test(
+    sample_data,
+    mu = 0
+  )
+
+  broom::tidy(test_result) |>
+    select(estimate, p.value)
+}
+```
+
+```{r problem3_simulation}
+set.seed(123)
+
+sim_results = tibble(
+  true_mu = rep(0:6, each = 5000)
+) |>
+  mutate(
+    results = map(true_mu, sim_t_test)
+  ) |>
+  unnest(results) |>
+  mutate(
+    rejected = p.value < 0.05
+  )
+
+sim_results
+
+power_results = sim_results |>
+  group_by(true_mu) |>
+  summarize(
+    power = mean(rejected),
+    .groups = "drop"
+  )
+
+power_results
+```
+
+```{r problem3_power_plot}
+power_results |>
+  ggplot(aes(x = true_mu, y = power)) +
+  geom_line(color = "steelblue", linewidth = 1) +
+  geom_point(color = "steelblue", size = 2) +
+  labs(
+    title = "Statistical Power vs. True Mean",
+    x = "True Mean (mu)",
+    y = "Power"
+  ) +
+  scale_x_continuous(breaks = 0:6) +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme_minimal()
+```
+
+As the true mean increases, the proportion of rejected null hypotheses also increases. When the true mean is 0, the rejection rate is around 5%, as expected. For larger values of the true mean, the test is more likely to detect a difference from 0, so the power increases.
+
+```{r problem3_mean_summary}
+mean_results = sim_results |>
+  group_by(true_mu) |>
+  summarize(
+    mean_all = mean(estimate),
+    mean_rejected = mean(estimate[rejected]),
+    .groups = "drop"
+  )
+
+mean_results
+```
+
+```{r problem3_mean_plot}
+mean_results |>
+  pivot_longer(
+    cols = c(mean_all, mean_rejected),
+    names_to = "estimate_type",
+    values_to = "average_estimate"
+  ) |>
+  mutate(
+    estimate_type = recode(
+      estimate_type,
+      mean_all = "All Samples",
+      mean_rejected = "Rejected Samples"
+    )
+  ) |>
+  ggplot(aes(
+    x = true_mu,
+    y = average_estimate,
+    color = estimate_type
+  )) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  geom_abline(
+    intercept = 0,
+    slope = 1,
+    linetype = "dashed",
+    color = "gray40"
+  ) +
+  labs(
+    title = "Average Estimated Mean vs. True Mean",
+    x = "True Mean (mu)",
+    y = "Average Estimated Mean",
+    color = "Samples"
+  ) +
+  scale_x_continuous(breaks = 0:6) +
+  theme_minimal()
+```
+
+The average estimate across all simulations stays close to the true mean. However, when we only look at samples that reject the null hypothesis, the average estimate is higher than the true mean for smaller positive values of μ. This is because samples with more extreme estimates are more likely to be statistically significant. As μ increases, the two averages become closer since more samples reject the null hypothesis.
+
